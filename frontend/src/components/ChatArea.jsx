@@ -811,6 +811,7 @@ function ChatArea() {
                 })
             );
 
+            const sessionToken = localStorage.getItem('jupiter_session_token');
             let fetchOptions;
             if (currentAttached?.file) {
                 const formData = new FormData();
@@ -819,17 +820,28 @@ function ChatArea() {
                 formData.append('agent', selectedAgent || 'auto');
                 formData.append('file', currentAttached.file);
 
+                const headers = {};
+                if (sessionToken) {
+                    headers['Authorization'] = `Bearer ${sessionToken}`;
+                }
+
                 fetchOptions = {
                     method: 'POST',
+                    headers,
                     body: formData,
                     credentials: 'include',
                 };
             } else {
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+                if (sessionToken) {
+                    headers['Authorization'] = `Bearer ${sessionToken}`;
+                }
+
                 fetchOptions = {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers,
                     body: JSON.stringify({
                         prompt: effectivePrompt,
                         conversationId: currentConvId,

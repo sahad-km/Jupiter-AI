@@ -2,7 +2,13 @@ import redis from "../../shared/redis/redis.js";
 
 const auth = async (req, res, next) => {
     try {
-        const token = req.cookies?.session;
+        const authHeader = req.headers.authorization;
+        const bearerToken = authHeader && authHeader.startsWith("Bearer ")
+            ? authHeader.slice(7).trim()
+            : null;
+
+        // Support both HTTP-only cookie and Authorization Bearer header
+        const token = req.cookies?.session || bearerToken;
 
         if (!token) {
             return res.status(401).json({ message: "Unauthorized: No session provided" });
@@ -22,4 +28,4 @@ const auth = async (req, res, next) => {
     }
 };
 
-export default auth;
+export default auth;

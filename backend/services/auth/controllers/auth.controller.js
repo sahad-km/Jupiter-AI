@@ -4,10 +4,12 @@ import { app } from "../config/firebase.js";
 import User from "../models/user.model.js";
 import redis from "../../../shared/redis/redis.js";
 
+// SameSite=None and Secure=true with Partitioned for cross-origin CloudFront and modern browsers
 const COOKIE_OPTIONS = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: true,
+    sameSite: "none",
+    partitioned: true,
     path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000
 };
@@ -62,9 +64,12 @@ export const login = async (req, res) => {
             avatar: user.avatar
         }), "EX", 7 * 24 * 60 * 60);
 
+        // 1. Set cookie (works for browsers accepting third-party cookies)
         res.cookie("session", sessionId, COOKIE_OPTIONS);
 
+        // 2. Also return token in JSON (gold standard for cross-domain SPAs, Incognito, Safari)
         return res.status(200).json({
+            token: sessionId,
             userId: user._id.toString(),
             name: user.name,
             email: user.email,
@@ -79,14 +84,19 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
     try {
-        const sessionId = req.cookies?.session;
+        const authHeader = req.headers.authorization;
+        const bearerToken = authHeader && authHeader.startsWith("Bearer ")
+            ? authHeader.slice(7).trim()
+            : null;
+        const sessionId = req.cookies?.session || bearerToken;
+
         if (sessionId) {
             await redis.del(`session-${sessionId}`);
         }
         res.clearCookie("session", {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+            secure: true,
+            sameSite: "none",
             path: "/"
         });
         return res.status(200).json({ message: "Logged out successfully" });

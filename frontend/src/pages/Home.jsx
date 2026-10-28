@@ -16,6 +16,9 @@ function Home() {
         try {
             const res = await api.post("/auth/login", { token });
             if (res.data) {
+                if (res.data.token) {
+                    localStorage.setItem("jupiter_session_token", res.data.token);
+                }
                 dispatch(setUser(res.data));
             }
         } catch (err) {

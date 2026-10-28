@@ -8,6 +8,8 @@ const getCurrentUser = async () => {
         }
     } catch (err) {
         console.log("Error fetching current user:", err);
+        // Clear expired or invalid session token
+        localStorage.removeItem("jupiter_session_token");
         return null;
     }
 }

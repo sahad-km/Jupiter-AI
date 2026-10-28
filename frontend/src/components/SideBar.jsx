@@ -199,6 +199,7 @@ function SideBar() {
         } catch (err) {
             console.error('Logout failed:', err);
         } finally {
+            localStorage.removeItem('jupiter_session_token');
             dispatch(clearUser());
             dispatch(setConversations([]));
             dispatch(setActiveConversationId(null));
