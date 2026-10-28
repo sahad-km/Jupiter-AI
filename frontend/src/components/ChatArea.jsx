@@ -394,11 +394,16 @@ function PptCard({ url, title, onPreview }) {
 
 function ProcessTrace({ steps, activeStatus, isStreaming }) {
     const [isExpanded, setIsExpanded] = useState(false);
-    const uniqueSteps = Array.isArray(steps)
-        ? Array.from(new Set(steps.filter(Boolean)))
+
+    // Filter out internal generic steps like "Formulating response..." for finished messages
+    const meaningfulSteps = Array.isArray(steps)
+        ? Array.from(new Set(steps.filter(Boolean))).filter((s) => {
+            if (isStreaming) return true;
+            return s !== 'Formulating response...' && s !== 'Jupiter is thinking...';
+        })
         : [];
 
-    if (uniqueSteps.length === 0 && !activeStatus) return null;
+    if (meaningfulSteps.length === 0 && (!isStreaming || !activeStatus)) return null;
 
     const getStepIcon = (text = '') => {
         const lower = text.toLowerCase();
@@ -420,19 +425,32 @@ function ProcessTrace({ steps, activeStatus, isStreaming }) {
         return <HiSparkles className="text-indigo-400 shrink-0" size={13} />;
     };
 
+    const formatCompletedStep = (stepText) => {
+        if (!stepText) return '';
+        if (stepText.startsWith('Searching the web')) return 'Web Search';
+        if (stepText.startsWith('Retrieving & analyzing PDF')) return 'PDF Document Analyzed';
+        if (stepText.startsWith('Scanning & analyzing image')) return 'Image Analyzed';
+        if (stepText.startsWith('Generating code solution')) return 'Code Solution Generated';
+        if (stepText.startsWith('Generating AI visuals')) return 'Visuals Generated';
+        if (stepText.startsWith('Compiling formatted PDF')) return 'PDF Compiled';
+        if (stepText.startsWith('Designing presentation slides')) return 'Slides Designed';
+        if (stepText.startsWith('Synthesizing answer')) return 'Web Sources Synthesized';
+        return stepText.replace(/\.\.\.$/, '');
+    };
+
     const summaryText = isStreaming
         ? activeStatus || 'Thinking...'
-        : uniqueSteps.length === 1
-            ? uniqueSteps[0]
-            : `${uniqueSteps.length} steps & sources used`;
+        : meaningfulSteps.length === 1
+            ? formatCompletedStep(meaningfulSteps[0])
+            : `${meaningfulSteps.length} tools & sources used`;
 
     return (
         <div className="mb-2">
             <button
                 type="button"
-                onClick={() => !isStreaming && uniqueSteps.length > 1 && setIsExpanded(!isExpanded)}
+                onClick={() => !isStreaming && meaningfulSteps.length > 1 && setIsExpanded(!isExpanded)}
                 className={`group inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white/[0.03] border border-white/[0.06] text-left transition-all ${
-                    !isStreaming && uniqueSteps.length > 1
+                    !isStreaming && meaningfulSteps.length > 1
                         ? 'hover:bg-white/[0.06] hover:border-white/[0.12] cursor-pointer'
                         : 'cursor-default'
                 }`}
@@ -450,7 +468,7 @@ function ProcessTrace({ steps, activeStatus, isStreaming }) {
                         {summaryText}
                     </span>
                 </div>
-                {!isStreaming && uniqueSteps.length > 1 && (
+                {!isStreaming && meaningfulSteps.length > 1 && (
                     <FiChevronDown
                         size={12}
                         className={`text-zinc-500 transition-transform duration-200 shrink-0 ${
@@ -460,12 +478,12 @@ function ProcessTrace({ steps, activeStatus, isStreaming }) {
                 )}
             </button>
 
-            {isExpanded && !isStreaming && uniqueSteps.length > 0 && (
+            {isExpanded && !isStreaming && meaningfulSteps.length > 0 && (
                 <div className="mt-2 pl-3 border-l border-white/[0.08] space-y-1.5">
-                    {uniqueSteps.map((step, idx) => (
+                    {meaningfulSteps.map((step, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-[11px] text-zinc-400">
                             {getStepIcon(step)}
-                            <span>{step}</span>
+                            <span>{formatCompletedStep(step)}</span>
                         </div>
                     ))}
                 </div>
@@ -1671,7 +1689,7 @@ function ChatArea() {
 
                                         {/* Message Action (Copy) - Outside Bubble */}
                                         {!isUser && (
-                                            <div className="mt-1 flex items-center gap-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                            <div className="mt-1 flex items-center gap-1.5 px-1 opacity-40 hover:opacity-100 group-hover:opacity-100 transition-opacity duration-200">
                                                 <button
                                                     onClick={() => handleCopy(msg.content, index)}
                                                     className="p-1 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06] transition flex items-center gap-1 cursor-pointer"
